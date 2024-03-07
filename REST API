@@ -1,0 +1,67 @@
+pip install Flask
+from flask import Flask, request, jsonify
+import sqlite3
+
+app = Flask(__name__)
+
+# Database Initialization
+conn = sqlite3.connect('movies.db')
+c = conn.cursor()
+c.execute('''CREATE TABLE IF NOT EXISTS movies
+             (id INTEGER PRIMARY KEY, title TEXT, year INTEGER)''')
+conn.commit()
+
+# Routes for Movie Management
+@app.route('/movies', methods=['GET'])
+def get_movies():
+    conn = sqlite3.connect('movies.db')
+    c = conn.cursor()
+    c.execute('SELECT * FROM movies')
+    movies = [{'id': row[0], 'title': row[1], 'year': row[2]} for row in c.fetchall()]
+    conn.close()
+    return jsonify(movies)
+
+@app.route('/movies/<int:movie_id>', methods=['GET'])
+def get_movie(movie_id):
+    conn = sqlite3.connect('movies.db')
+    c = conn.cursor()
+    c.execute('SELECT * FROM movies WHERE id = ?', (movie_id,))
+    movie = c.fetchone()
+    conn.close()
+    if movie:
+        return jsonify({'id': movie[0], 'title': movie[1], 'year': movie[2]})
+    else:
+        return jsonify({'message': 'Movie not found'}), 404
+
+@app.route('/movies', methods=['POST'])
+def create_movie():
+    data = request.json
+    conn = sqlite3.connect('movies.db')
+    c = conn.cursor()
+    c.execute('INSERT INTO movies (title, year) VALUES (?, ?)', (data['title'], data['year']))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Movie created successfully'}), 201
+
+@app.route('/movies/<int:movie_id>', methods=['PUT'])
+def update_movie(movie_id):
+    data = request.json
+    conn = sqlite3.connect('movies.db')
+    c = conn.cursor()
+    c.execute('UPDATE movies SET title = ?, year = ? WHERE id = ?', (data['title'], data['year'], movie_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Movie updated successfully'})
+
+@app.route('/movies/<int:movie_id>', methods=['DELETE'])
+def delete_movie(movie_id):
+    conn = sqlite3.connect('movies.db')
+    c = conn.cursor()
+    c.execute('DELETE FROM movies WHERE id = ?', (movie_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Movie deleted successfully'})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+python app.py
